@@ -16,12 +16,6 @@ The guide below explains how to utilize the [Karpenter provider for AWS](https:/
 
 See the [AKS Node autoprovisioning article](https://learn.microsoft.com/azure/aks/node-autoprovision) on how to use Karpenter on Azure's AKS or go to the [Karpenter provider for Azure open source repository](https://github.com/Azure/karpenter-provider-azure) for self-hosting on Azure and additional information.
 
-## Create a cluster and add Karpenter
-
-This guide uses `eksctl` to create the cluster.
-It should take less than 1 hour to complete, and cost less than $0.25.
-Follow the clean-up instructions to reduce any charges.
-
 ### 1. Install utilities
 
 Karpenter is installed in clusters with a Helm chart.
@@ -67,18 +61,23 @@ echo "${KARPENTER_NAMESPACE}" "${KARPENTER_VERSION}" "${K8S_VERSION}" "${CLUSTER
 {{% /alert %}}
 
 
-### 3. Create a Cluster
+### 3. Create Karpenter Resources
+
+Use CloudFormation to set up the infrastructure needed by the EKS cluster. See [CloudFormation]({{< relref "../../reference/cloudformation/" >}}) for a complete description of what `cloudformation.yaml` does for Karpenter.
+
+{{% script file="./content/en/{VERSION}/getting-started/getting-started-with-karpenter/scripts/step03-iam-cloud-formation.sh" language="bash"%}}
+
+### 4. Create a Cluster or Setup an Existing Cluster
+
+#### 4a. Create a Cluster
 
 Create a basic cluster with `eksctl`.
 The following cluster configuration will:
 
-* Use CloudFormation to set up the infrastructure needed by the EKS cluster. See [CloudFormation]({{< relref "../../reference/cloudformation/" >}}) for a complete description of what `cloudformation.yaml` does for Karpenter.
 * Create a Kubernetes service account and AWS IAM Role, and associate them using IRSA to let Karpenter launch instances.
 * Add the Karpenter node role to the aws-auth configmap to allow nodes to connect.
 * Use [AWS EKS managed node groups](https://docs.aws.amazon.com/eks/latest/userguide/managed-node-groups.html) for the kube-system and karpenter namespaces. Uncomment fargateProfiles settings (and comment out managedNodeGroups settings) to use Fargate for both namespaces instead.
 * Set KARPENTER_IAM_ROLE_ARN variables.
-* Create a role to allow spot instances.
-* Run Helm to install Karpenter
 
 {{< tabpane text=true right=false >}}
   {{% tab header="**Create cluster command**:" disabled=true /%}}
@@ -90,9 +89,17 @@ The following cluster configuration will:
   {{% /tab %}}
 {{< /tabpane >}}
 
+#### 4b. Setup an Existing Cluster
+
+* Create Node IAM Role
+{{% script file="./content/en/{VERSION}/getting-started/getting-started-with-karpenter/scripts/step04-controller-iam.sh" language="bash"%}}
+
+* Update aws-auth ConfigMap or Create an IAM Access Entry
+
+{{% alert title="Spot Instance Support Notice" color="warning" %}}
 Unless your AWS account has already onboarded to EC2 Spot, you will need to create the service linked role to
 avoid the [`ServiceLinkedRoleCreationNotPermitted` error]({{<ref "../../troubleshooting/#missing-service-linked-role" >}}).
-
+{{% /alert %}}
 {{% script file="./content/en/{VERSION}/getting-started/getting-started-with-karpenter/scripts/step06-add-spot-role.sh" language="bash"%}}
 
 {{% alert title="Windows Support Notice" color="warning" %}}
@@ -101,7 +108,6 @@ See [Enabling Windows support](https://docs.aws.amazon.com/eks/latest/userguide/
 {{% /alert %}}
 
 ### 4. Install Karpenter
-
 {{< tabpane text=true right=false >}}
   {{% tab header="**Karpenter installation command**:" disabled=true /%}}
   {{% tab header="Managed NodeGroups" %}}
